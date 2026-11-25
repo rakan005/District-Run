@@ -54,13 +54,13 @@ export function startFallback() {
     let fx = tx - cx, fy = ty - cy, fz = tz - cz; const fl = Math.hypot(fx, fy, fz) || 1; fx /= fl; fy /= fl; fz /= fl;
     let rx = -fz, ry = 0, rz = fx; const rl = Math.hypot(rx, rz) || 1; rx /= rl; rz /= rl;
     const ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;
-    return { cx, cy, cz, fx, fy, fz, rx, ry, rz, ux, uy, uz, focal: H * (0.92 + Math.min(.12, Math.abs(car.speed) * .002)) };
+    return { cx, cy, cz, fx, fy, fz, rx, ry, rz, ux, uy, uz, focal: H * (1.04 + Math.min(.14, Math.abs(car.speed) * .002)) };
   }
   function project(x, y, z, cam) {
     const dx = x - cam.cx, dy = y - cam.cy, dz = z - cam.cz;
     const depth = dx * cam.fx + dy * cam.fy + dz * cam.fz;
     if (depth < .6) return null;
-    return { x: W / 2 + (dx * cam.rx + dy * cam.ry + dz * cam.rz) * cam.focal / depth, y: H * .47 - (dx * cam.ux + dy * cam.uy + dz * cam.uz) * cam.focal / depth, d: depth };
+    return { x: W / 2 + (dx * cam.rx + dy * cam.ry + dz * cam.rz) * cam.focal / depth, y: H * .425 - (dx * cam.ux + dy * cam.uy + dz * cam.uz) * cam.focal / depth, d: depth };
   }
   function poly(points, color, alpha = 1) {
     const pts = points.filter(Boolean); if (pts.length < 3) return;
@@ -94,7 +94,7 @@ export function startFallback() {
     const zFace = b.z + Math.sign(dz || 1) * (b.d / 2 + .08), xFace = b.x + Math.sign(dx || 1) * (b.w / 2 + .08);
     const cols = 3, wid = Math.min(2.1,b.w*.19), hi = 1.2;
     for (let r = 1; r <= rows; r++) for (let c = 0; c < cols; c++) {
-      if (rand() < .14) continue;
+      if ((Math.floor(b.seed * 997) + r * 17 + c * 13) % 8 === 0) continue;
       const y = r * b.h / (rows + 1), wx = b.x - b.w*.29 + c*b.w*.29, wz = b.z - b.d*.29 + c*b.d*.29;
       const glow = (r+c+Math.floor(b.seed*8))%5===0 ? '#82d9df' : '#ffd38a';
       let pts;
@@ -109,6 +109,29 @@ export function startFallback() {
     face(cab,cam,'#203944');
     const hood = [local(-.78,1.0,-1.9),local(.78,1.0,-1.9),local(.63,1.02,-.8),local(-.63,1.02,-.8)];
     face(hood,cam,o.color||'#b74937');
+    // Rear glass and side windows make the low-poly fallback car read as a coupe.
+    face([local(-.5,1.76,.42),local(.5,1.76,.42),local(.59,1.23,.93),local(-.59,1.23,.93)],cam,'#122731');
+    for (const side of [-1,1]) {
+      const x=side*.79;
+      face([local(x,1.27,-.68),local(x,1.27,-.05),local(x*.78,1.72,-.08),local(x*.78,1.72,-.53)],cam,'#42616a');
+      face([local(x,1.27,.04),local(x,1.27,.62),local(x*.78,1.72,.49),local(x*.78,1.72,-.03)],cam,'#29434c');
+      face([local(side*.94,.72,-.9),local(side*.94,.72,.9),local(side*1.01,.72,.9),local(side*1.01,.72,-.9)],cam,'#171d21');
+      const mirror=project(...local(side*1.1,1.36,-.58),cam);
+      if(mirror){ctx.fillStyle='#9ca8a2';ctx.beginPath();ctx.arc(mirror.x,mirror.y,2.3,0,Math.PI*2);ctx.fill();}
+    }
+    const drawWheel=(x,z)=>{
+      const c=project(...local(x,.48,z),cam), edge=project(...local(x+.4,.48,z),cam), top=project(...local(x,.88,z),cam);
+      if(!c||!edge||!top)return;
+      const rx=Math.max(2,Math.hypot(edge.x-c.x,edge.y-c.y)), ry=Math.max(2,Math.hypot(top.x-c.x,top.y-c.y));
+      ctx.fillStyle='#101417';ctx.beginPath();ctx.ellipse(c.x,c.y,rx,ry,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#697478';ctx.lineWidth=Math.max(1,rx*.18);ctx.stroke();
+      ctx.fillStyle='#b5b8ad';ctx.beginPath();ctx.ellipse(c.x,c.y,rx*.42,ry*.42,0,0,Math.PI*2);ctx.fill();
+    };
+    for(const x of [-.96,.96])for(const z of [-1.42,1.42])drawWheel(x,z);
+    face([local(-.72,.94,-2.3),local(-.3,.94,-2.3),local(-.32,1.05,-2.3),local(-.7,1.05,-2.3)],cam,'#fff0bd');
+    face([local(.3,.94,-2.3),local(.72,.94,-2.3),local(.7,1.05,-2.3),local(.32,1.05,-2.3)],cam,'#fff0bd');
+    face([local(-.72,.92,2.3),local(-.3,.92,2.3),local(-.3,1.04,2.3),local(-.72,1.04,2.3)],cam,'#ff4d5e');
+    face([local(.3,.92,2.3),local(.72,.92,2.3),local(.72,1.04,2.3),local(.3,1.04,2.3)],cam,'#ff4d5e');
     if (o.police) {
       const p=project(...local(-.26,2.1,-.12),cam), q=project(...local(.26,2.1,-.12),cam);
       if(p&&q){ctx.fillStyle=Math.sin(performance.now()*.018)>0?'#fa344c':'#39bde8';ctx.fillRect(p.x,p.y,Math.max(2,Math.abs(q.x-p.x)),Math.max(2,Math.abs(q.y-p.y)));}
