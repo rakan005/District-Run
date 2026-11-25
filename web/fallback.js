@@ -74,14 +74,19 @@ export function startFallback() {
       corners.push([x + lx * Math.cos(yaw) - lz * Math.sin(yaw), y, z + lx * Math.sin(yaw) + lz * Math.cos(yaw)]);
     }
     const q = (i) => corners[i];
+    const xAxis = [Math.cos(yaw), 0, Math.sin(yaw)], zAxis = [-Math.sin(yaw), 0, Math.cos(yaw)];
     const faces = [
-      { points: [q(0),q(1),q(5),q(4)], shade: .56 }, { points: [q(2),q(3),q(7),q(6)], shade: .69 },
-      { points: [q(0),q(2),q(6),q(4)], shade: .75 }, { points: [q(1),q(3),q(7),q(5)], shade: .47 },
-      { points: [q(4),q(5),q(7),q(6)], shade: 1.05 }, { points: [q(0),q(1),q(3),q(2)], shade: .39 },
+      { points: [q(0),q(1),q(5),q(4)], normal: xAxis.map(v=>-v), shade: .56 }, { points: [q(2),q(3),q(7),q(6)], normal: xAxis, shade: .69 },
+      { points: [q(0),q(2),q(6),q(4)], normal: zAxis.map(v=>-v), shade: .75 }, { points: [q(1),q(3),q(7),q(5)], normal: zAxis, shade: .47 },
+      { points: [q(4),q(5),q(7),q(6)], normal: [0,1,0], shade: 1.05 }, { points: [q(0),q(1),q(3),q(2)], normal: [0,-1,0], shade: .39 },
     ];
     const cameraDeltaX = cam.cx - x, cameraDeltaZ = cam.cz - z;
     faces.sort((a,b) => ((b.points.reduce((s,p)=>s+Math.hypot(p[0]-cam.cx,p[2]-cam.cz),0)/4) - (a.points.reduce((s,p)=>s+Math.hypot(p[0]-cam.cx,p[2]-cam.cz),0)/4)));
-    for (const f of faces) {
+    const visibleFaces = faces.filter(f => {
+      const cx=f.points.reduce((s,p)=>s+p[0],0)/f.points.length, cy=f.points.reduce((s,p)=>s+p[1],0)/f.points.length, cz=f.points.reduce((s,p)=>s+p[2],0)/f.points.length;
+      return f.normal[0]*(cam.cx-cx)+f.normal[1]*(cam.cy-cy)+f.normal[2]*(cam.cz-cz)>.001;
+    });
+    for (const f of visibleFaces) {
       const shade = f.shade; const rgb = color.match(/[\da-f]{2}/gi)?.map(v => parseInt(v,16)) || [100,100,100];
       poly(f.points.map(p=>project(p[0],p[1],p[2],cam)), `rgb(${bound(rgb[0]*shade,0,255)|0},${bound(rgb[1]*shade,0,255)|0},${bound(rgb[2]*shade,0,255)|0})`);
     }
@@ -105,13 +110,17 @@ export function startFallback() {
   }
   function drawCarDetails(o, cam, yaw) {
     const local = (lx,ly,lz) => [o.x+lx*Math.cos(yaw)-lz*Math.sin(yaw),ly,o.z+lx*Math.sin(yaw)+lz*Math.cos(yaw)];
+    const dx=cam.cx-o.x,dz=cam.cz-o.z,camLocalX=dx*Math.cos(yaw)+dz*Math.sin(yaw),camLocalZ=-dx*Math.sin(yaw)+dz*Math.cos(yaw);
+    const rearVisible=camLocalZ>0, sideVisible=Math.sign(camLocalX)||1;
     const cab = [local(-.67,1.2,-.18),local(.67,1.2,-.18),local(.53,1.98,.45),local(-.53,1.98,.45)];
-    face(cab,cam,'#203944');
+    face(cab,cam,'#28434a');
     const hood = [local(-.78,1.0,-1.9),local(.78,1.0,-1.9),local(.63,1.02,-.8),local(-.63,1.02,-.8)];
     face(hood,cam,o.color||'#b74937');
-    // Rear glass and side windows make the low-poly fallback car read as a coupe.
-    face([local(-.5,1.76,.42),local(.5,1.76,.42),local(.59,1.23,.93),local(-.59,1.23,.93)],cam,'#122731');
-    for (const side of [-1,1]) {
+    // Only paint glass on the surfaces facing the chase camera; this avoids
+    // headlights and windows appearing through the body in the Canvas renderer.
+    if(rearVisible) face([local(-.58,1.73,.38),local(.58,1.73,.38),local(.67,1.22,.93),local(-.67,1.22,.93)],cam,'#142b34');
+    else face([local(-.62,1.22,-.79),local(.62,1.22,-.79),local(.52,1.72,-.2),local(-.52,1.72,-.2)],cam,'#263f47');
+    for (const side of [sideVisible]) {
       const x=side*.79;
       face([local(x,1.27,-.68),local(x,1.27,-.05),local(x*.78,1.72,-.08),local(x*.78,1.72,-.53)],cam,'#42616a');
       face([local(x,1.27,.04),local(x,1.27,.62),local(x*.78,1.72,.49),local(x*.78,1.72,-.03)],cam,'#29434c');
@@ -127,11 +136,17 @@ export function startFallback() {
       ctx.strokeStyle='#697478';ctx.lineWidth=Math.max(1,rx*.18);ctx.stroke();
       ctx.fillStyle='#b5b8ad';ctx.beginPath();ctx.ellipse(c.x,c.y,rx*.42,ry*.42,0,0,Math.PI*2);ctx.fill();
     };
-    for(const x of [-.96,.96])for(const z of [-1.42,1.42])drawWheel(x,z);
-    face([local(-.72,.94,-2.3),local(-.3,.94,-2.3),local(-.32,1.05,-2.3),local(-.7,1.05,-2.3)],cam,'#fff0bd');
-    face([local(.3,.94,-2.3),local(.72,.94,-2.3),local(.7,1.05,-2.3),local(.32,1.05,-2.3)],cam,'#fff0bd');
-    face([local(-.72,.92,2.3),local(-.3,.92,2.3),local(-.3,1.04,2.3),local(-.72,1.04,2.3)],cam,'#ff4d5e');
-    face([local(.3,.92,2.3),local(.72,.92,2.3),local(.72,1.04,2.3),local(.3,1.04,2.3)],cam,'#ff4d5e');
+    if(Math.abs(camLocalZ)>Math.abs(camLocalX)) for(const x of [-.96,.96])drawWheel(x,rearVisible?1.42:-1.42);
+    else for(const z of [-1.42,1.42])drawWheel(sideVisible*.96,z);
+    if(rearVisible){
+      face([local(-.76,.94,2.3),local(-.28,.94,2.3),local(-.28,1.08,2.3),local(-.76,1.08,2.3)],cam,'#ff4d5e');
+      face([local(.28,.94,2.3),local(.76,.94,2.3),local(.76,1.08,2.3),local(.28,1.08,2.3)],cam,'#ff4d5e');
+      face([local(-.75,.64,2.29),local(.75,.64,2.29),local(.75,.72,2.29),local(-.75,.72,2.29)],cam,'#161d20');
+      face([local(-.46,.77,2.31),local(.46,.77,2.31),local(.42,.9,2.31),local(-.42,.9,2.31)],cam,'#d6c8a4');
+    } else {
+      face([local(-.76,.94,-2.3),local(-.28,.94,-2.3),local(-.28,1.08,-2.3),local(-.76,1.08,-2.3)],cam,'#fff0bd');
+      face([local(.28,.94,-2.3),local(.76,.94,-2.3),local(.76,1.08,-2.3),local(.28,1.08,-2.3)],cam,'#fff0bd');
+    }
     if (o.police) {
       const p=project(...local(-.26,2.1,-.12),cam), q=project(...local(.26,2.1,-.12),cam);
       if(p&&q){ctx.fillStyle=Math.sin(performance.now()*.018)>0?'#fa344c':'#39bde8';ctx.fillRect(p.x,p.y,Math.max(2,Math.abs(q.x-p.x)),Math.max(2,Math.abs(q.y-p.y)));}
