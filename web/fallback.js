@@ -1,4 +1,4 @@
-import { initAudio, setEngine, setSiren, playDelivery, cleanupAudio } from './audio.js?v=3';
+import { initAudio, setEngine, setSiren, playDelivery, cleanupAudio } from './audio.js?v=4';
 
 // Perspective Canvas fallback for browsers where WebGL is unavailable.
 export function startFallback() {
@@ -11,7 +11,7 @@ export function startFallback() {
   const roads = Array.from({ length: N + 1 }, (_, i) => -HALF + i * SP);
   const keys = new Set(), buildings = [], traffic = [], cops = [], missionPoints = [
     [75, 375, 'THE LAST-MINUTE PARCEL', 450], [225, 75, 'A QUIET PICKUP', 650],
-    [375, -375, 'BAYFRONT RUN', 900], [-375, -225, 'NIGHT MARKET DROP', 1250], [75, 375, 'ONE MORE FAVOR', 1600],
+    [375, -375, 'BAYFRONT RUN', 900], [-375, -225, 'NIGHT MARKET DROP', 1250], [-75, -525, 'ONE MORE FAVOR', 1600],
   ];
   let W = 0, H = 0, DPR = 1, cash = 250, heat = 0, missionIndex = 0, paused = true, started = false;
   let timer = 0, crashCooldown = 0, clearHeat = 0, audioSpeed = -1, sirenOn = false;
@@ -49,12 +49,12 @@ export function startFallback() {
   function mission() { return missionPoints[missionIndex]; }
   function cameraBasis() {
     const forwardX = -Math.sin(car.yaw), forwardZ = -Math.cos(car.yaw);
-    const cx = car.x - forwardX * 15, cy = 7.4, cz = car.z - forwardZ * 15;
+    const cx = car.x - forwardX * 11.5, cy = 6.1, cz = car.z - forwardZ * 11.5;
     const tx = car.x + forwardX * 5, ty = 1.0, tz = car.z + forwardZ * 5;
     let fx = tx - cx, fy = ty - cy, fz = tz - cz; const fl = Math.hypot(fx, fy, fz) || 1; fx /= fl; fy /= fl; fz /= fl;
     let rx = -fz, ry = 0, rz = fx; const rl = Math.hypot(rx, rz) || 1; rx /= rl; rz /= rl;
     const ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;
-    return { cx, cy, cz, fx, fy, fz, rx, ry, rz, ux, uy, uz, focal: H * (1.04 + Math.min(.14, Math.abs(car.speed) * .002)) };
+    return { cx, cy, cz, fx, fy, fz, rx, ry, rz, ux, uy, uz, focal: H * (1.1 + Math.min(.14, Math.abs(car.speed) * .002)) };
   }
   function project(x, y, z, cam) {
     const dx = x - cam.cx, dy = y - cam.cy, dz = z - cam.cz;

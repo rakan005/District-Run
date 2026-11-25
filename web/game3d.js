@@ -1,7 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-import { initAudio, setEngine, setSiren, playDelivery, cleanupAudio } from './audio.js?v=3';
-import { addStreetProps } from './street-props.js?v=3';
-import { buildRoadDetails } from './road-details.js?v=3';
+import { initAudio, setEngine, setSiren, playDelivery, cleanupAudio } from './audio.js?v=4';
+import { addStreetProps } from './street-props.js?v=4';
+import { buildRoadDetails } from './road-details.js?v=4';
 
 // Nightshift: District Run — self-contained procedural third-person game module.
 // Load with: import { startGame } from './game3d.js'; startGame();
@@ -63,7 +63,7 @@ export function startGame() {
     { x: 225, z: 75, title: 'A QUIET PICKUP', reward: 650 },
     { x: 375, z: -375, title: 'BAYFRONT RUN', reward: 900 },
     { x: -375, z: -225, title: 'NIGHT MARKET DROP', reward: 1250 },
-    { x: 75, z: 375, title: 'ONE MORE FAVOR', reward: 1600 },
+    { x: -75, z: -525, title: 'ONE MORE FAVOR', reward: 1600 },
   ];
 
   const mat = (color, roughness = 0.82, metalness = 0, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra });
@@ -480,7 +480,7 @@ export function startGame() {
 
   function updateCamera(dt) {
     const yaw = playerCar.rotation.y;
-    const behind = new THREE.Vector3(0, 5.6, 13.8).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    const behind = new THREE.Vector3(0, 4.9, 11.4).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
     const desired = new THREE.Vector3(car.x, 0, car.z).add(behind);
     camera.position.lerp(desired, 1 - Math.exp(-3.8 * dt));
     const look = new THREE.Vector3(car.x, 1.2, car.z).add(new THREE.Vector3(0, 0.1, -4.1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw));
