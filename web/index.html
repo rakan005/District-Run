@@ -24,9 +24,10 @@
 </div>
 <div id="intro" class="overlay"><div class="card"><div class="kicker">AN ORIGINAL THIRD-PERSON CITY DRIVE</div><div class="title">NIGHTSHIFT<br><em>DISTRICT RUN</em></div><div class="desc">A city of late-night contracts, wet asphalt, warm windows, and patrol lights. Take the wheel, follow the marker, and make your drop before the streets get crowded.</div><button id="start" class="start">START YOUR SHIFT&nbsp; →</button><div class="help"><span><b class="key-pill">WASD</b> DRIVE</span><span><b class="key-pill">SPACE</b> HANDBRAKE</span><span><b class="key-pill">E</b> DELIVER</span><span><b class="key-pill">ESC</b> PAUSE</span></div></div></div>
 <div id="pause" class="overlay hidden"><div class="card"><div class="kicker">TAKE A BREATHER</div><div class="title">SHIFT<br><em>PAUSED</em></div><div class="desc">Your car and the city are waiting. Get back on the road when you're ready.</div><button class="start" id="resume">RETURN TO THE CITY&nbsp; →</button><div class="help"><span><b class="key-pill">ESC</b> RESUME</span></div></div></div>
-<script type="module">
+<script>
 const startButton = document.getElementById('start');
 let startWasPressed = false;
+startButton?.addEventListener('pointerdown', () => { startWasPressed = true; }, { once: true });
 startButton?.addEventListener('click', () => { startWasPressed = true; }, { once: true });
 async function bootGame() {
   try {
