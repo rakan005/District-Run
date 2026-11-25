@@ -4,7 +4,7 @@ An original open-city night driving game.
 
 ## Play online
 
-The browser version is at **https://rakan005.github.io/aa/** after GitHub Pages is enabled for this repository under **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+The browser version is at **https://rakan005.github.io/District-Run/** after GitHub Pages is enabled for this repository under **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
 ## Controls
 
