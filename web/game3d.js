@@ -1,5 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-import { initAudio, setEngine, setSiren, playDelivery, cleanupAudio } from './audio.js';
+import { initAudio, setEngine, setSiren, playDelivery, cleanupAudio } from './audio.js?v=3';
+import { addStreetProps } from './street-props.js?v=3';
+import { buildRoadDetails } from './road-details.js?v=3';
 
 // Nightshift: District Run — self-contained procedural third-person game module.
 // Load with: import { startGame } from './game3d.js'; startGame();
@@ -55,9 +57,9 @@ export function startGame() {
   let lastAudioSpeed = -1;
   let lastAudioSiren = false;
 
-  const car = { x: 75, z: half - 31, yaw: 0, speed: 0, steer: 0, wheelSpin: 0, lastCrash: 0 };
+  const car = { x: 75, z: half - 31, yaw: 0, speed: 0, lateralSpeed: 0, steer: 0, wheelSpin: 0, lastCrash: 0 };
   const missions = [
-    { x: -225, z: 225, title: 'THE LAST-MINUTE PARCEL', reward: 450 },
+    { x: 75, z: 375, title: 'THE LAST-MINUTE PARCEL', reward: 450 },
     { x: 225, z: 75, title: 'A QUIET PICKUP', reward: 650 },
     { x: 375, z: -375, title: 'BAYFRONT RUN', reward: 900 },
     { x: -375, z: -225, title: 'NIGHT MARKET DROP', reward: 1250 },
@@ -133,17 +135,9 @@ export function startGame() {
       plane(roadGroup, 'Sidewalk', worldSize, 5, mats.sidewalk, 0, 0.11, p + side * (city.road / 2 + 2.5));
     }
   }
-  const dashGeometry = new THREE.BoxGeometry(0.22, 0.035, 7.4);
-  const dashNS = new THREE.InstancedMesh(dashGeometry, mats.paint, (city.blocks + 1) * 44);
-  const dashEW = new THREE.InstancedMesh(new THREE.BoxGeometry(7.4, 0.035, 0.22), mats.paint, (city.blocks + 1) * 44);
   const helper = new THREE.Object3D();
   const temp = new THREE.Object3D();
-  let dashI = 0;
-  for (const p of roadLines) for (let z = -half + 12; z <= half - 10; z += 24) {
-    helper.position.set(p, 0.06, z); helper.updateMatrix(); dashNS.setMatrixAt(dashI, helper.matrix);
-    helper.position.set(z, 0.06, p); helper.updateMatrix(); dashEW.setMatrixAt(dashI, helper.matrix); dashI++;
-  }
-  dashNS.count = dashI; dashEW.count = dashI; roadGroup.add(dashNS, dashEW);
+  buildRoadDetails({ THREE, scene, city, roadLines, half });
 
   // Repeating city windows are instanced into one draw call per facade direction.
   const buildingPalette = [0x546872, 0xa36e61, 0x777e80, 0x667489, 0xb29876, 0x4f7068, 0x7e6a77, 0x8b755f];
@@ -240,22 +234,53 @@ export function startGame() {
     }
   }
   lampPole.count = lampN; lampHead.count = lampN; scene.add(lampPole, lampHead);
+  addStreetProps({ THREE, scene, city, roadLines, half });
+  addRoadDetails({ THREE, scene, city, roadLines, half });
 
-  const carPaint = mat(0xb74937, 0.26, 0.62);
-  const carDark = mat(0x172932, 0.18, 0.36);
   const headlightMat = mat(0xffedbf, 0.18, 0, { emissive: 0xffd786, emissiveIntensity: 2.4 });
   const tailMat = mat(0xed4251, 0.24, 0, { emissive: 0xc82435, emissiveIntensity: 1.3 });
   function createCarModel({ policeCar = false, color = 0xb74937, simple = false } = {}) {
     const group = new THREE.Group();
     const paint = policeCar ? mat(0xe7e8e3, 0.28, 0.48) : mat(color, 0.25, 0.58);
     const shell = new THREE.Group(); group.add(shell);
-    box(shell, 'Sculpted coupe body', [2.15, 0.72, 4.55], paint, [0, 0.82, 0], true);
-    box(shell, 'Hood', [2.04, 0.18, 1.3], paint, [0, 1.15, -1.49], true);
-    box(shell, 'Cabin', [1.64, 0.78, 2.05], carDark, [0, 1.48, -0.18], true);
-    box(shell, 'Roof', [1.34, 0.14, 1.22], paint, [0, 1.91, -0.12], true);
-    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.48, 0.07), mat(0x84a3ab, 0.17, 0.28, { transparent: true, opacity: 0.8 }));
-    windshield.position.set(0, 1.57, -0.98); windshield.rotation.x = -0.18; shell.add(windshield);
-    const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.42, 0.07), carDark); rearGlass.position.set(0, 1.55, 0.72); rearGlass.rotation.x = 0.25; shell.add(rearGlass);
+    // A beveled side silhouette gives the coupe a low roofline and shaped hood/trunk.
+    const profile = new THREE.Shape();
+    profile.moveTo(-2.24, 0.48); profile.lineTo(-2.15, 0.96); profile.lineTo(-1.35, 1.06);
+    profile.lineTo(-0.79, 1.62); profile.quadraticCurveTo(-0.61, 1.78, -0.38, 1.79);
+    profile.lineTo(0.63, 1.79); profile.quadraticCurveTo(0.84, 1.78, 0.99, 1.57);
+    profile.lineTo(1.25, 1.16); profile.lineTo(2.13, 1.04); profile.lineTo(2.24, 0.53);
+    profile.quadraticCurveTo(1.6, 0.38, 1.1, 0.44); profile.lineTo(-1.12, 0.44);
+    profile.quadraticCurveTo(-1.68, 0.38, -2.24, 0.48);
+    const bodyGeo = new THREE.ExtrudeGeometry(profile, { depth: 1.88, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.055, bevelThickness: 0.055, curveSegments: 5 });
+    bodyGeo.rotateY(Math.PI / 2);
+    const body = new THREE.Mesh(bodyGeo, paint); body.position.x = -0.94; body.castShadow = true; body.receiveShadow = true; body.name = 'Beveled coupe body'; shell.add(body);
+    box(shell, 'Front bumper', [1.94, 0.18, 0.16], mat(0x252b2d, 0.38, 0.56), [0, 0.52, -2.22], true);
+    box(shell, 'Rear bumper', [1.94, 0.18, 0.16], mat(0x252b2d, 0.38, 0.56), [0, 0.52, 2.22], true);
+    box(shell, 'Front grille', [0.77, 0.25, 0.045], mat(0x111719, 0.4, 0.28), [0, 0.77, -2.255]);
+    box(shell, 'Lower intake', [1.12, 0.09, 0.045], mat(0x111719, 0.4, 0.28), [0, 0.59, -2.25]);
+    const glass = mat(0x55909d, 0.16, 0.34, { transparent: true, opacity: 0.78, side: THREE.DoubleSide, depthWrite: false });
+    const sidePane = (points, x) => {
+      const shape = new THREE.Shape(); shape.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < points.length; i++) shape.lineTo(points[i][0], points[i][1]);
+      shape.closePath();
+      const pane = new THREE.Mesh(new THREE.ShapeGeometry(shape), glass); pane.rotation.y = Math.PI / 2; pane.position.x = x; pane.name = 'Tinted side glass'; shell.add(pane);
+    };
+    for (const sideX of [-0.952, 0.952]) {
+      sidePane([[-0.77, 1.2], [-0.39, 1.67], [0.07, 1.67], [0.07, 1.2]], sideX);
+      sidePane([[0.2, 1.2], [0.2, 1.67], [0.61, 1.67], [0.92, 1.2]], sideX);
+      const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.13, 0.23), paint);
+      mirror.position.set(sideX * 1.11, 1.25, -0.94); mirror.castShadow = true; shell.add(mirror);
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.055, 0.25), mats.metal);
+      handle.position.set(sideX * 1.005, 1.02, 0.04); shell.add(handle);
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.43, 0.012), mats.metal);
+      seam.position.set(sideX * 1.005, 0.82, 0.62); shell.add(seam);
+    }
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.48, 0.055), glass);
+    windshield.position.set(0, 1.55, -0.98); windshield.rotation.x = -0.42; shell.add(windshield);
+    const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.4, 0.055), glass);
+    rearGlass.position.set(0, 1.51, 0.88); rearGlass.rotation.x = 0.48; shell.add(rearGlass);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.12, 1.28), paint);
+    roof.position.set(0, 1.79, 0.08); roof.castShadow = true; shell.add(roof);
     const wheelGeo = new THREE.CylinderGeometry(0.47, 0.47, 0.32, 16);
     const wheels = [];
     for (const x of [-1.08, 1.08]) for (const z of [-1.43, 1.43]) {
@@ -386,6 +411,10 @@ export function startGame() {
     }
     const targetCount = Math.min(3, Math.ceil(wanted / 1.8));
     while (police.length < targetCount) spawnPolice();
+    while (police.length > targetCount) {
+      const retiring = police.pop();
+      retiring.mesh.visible = false; retiring.speed = 0;
+    }
     let closest = Infinity;
     for (let i = police.length - 1; i >= 0; i--) {
       const cop = police[i], p = cop.mesh.position;
@@ -421,20 +450,23 @@ export function startGame() {
     car.speed *= Math.max(0, 1 - (handbrake ? 2.1 : 0.44) * dt);
     if (!throttle) car.speed = THREE.MathUtils.damp(car.speed, 0, 0.16, dt);
     car.speed = THREE.MathUtils.clamp(car.speed, -max * 0.48, max);
-    const speedFactor = THREE.MathUtils.clamp(Math.abs(car.speed) / 8, 0.08, 1);
+    const speedFactor = THREE.MathUtils.clamp(Math.abs(car.speed) / 8, 0, 1);
     car.steer = THREE.MathUtils.damp(car.steer, steeringInput, 4.8, dt);
     const drift = handbrake ? 1.52 : 1;
     car.yaw -= car.steer * speedFactor * dt * (1.55 + Math.min(0.8, Math.abs(car.speed) * 0.017)) * Math.sign(car.speed || 1) * drift;
+    car.lateralSpeed += car.steer * Math.abs(car.speed) / 40 * (handbrake ? 3.2 : 0.75) * dt;
+    car.lateralSpeed *= Math.exp(-(handbrake ? 0.85 : 5.4) * dt);
     const oldX = car.x, oldZ = car.z;
-    car.x -= Math.sin(car.yaw) * car.speed * dt;
-    car.z -= Math.cos(car.yaw) * car.speed * dt;
-    if (collides(car.x, car.z)) {
-      car.x = oldX; car.z = oldZ;
-      if (Math.abs(car.speed) > 3 && collisionCooldown <= 0) {
-        car.speed *= -0.16; wanted = Math.min(5, wanted + 0.12); collisionCooldown = 0.7;
-        showToast('CURB HIT  ·  WATCH THE ROAD', 1.4);
-      } else car.speed *= 0.55;
-    }
+    const moveX = (-Math.sin(car.yaw) * car.speed + Math.cos(car.yaw) * car.lateralSpeed) * dt;
+    const moveZ = (-Math.cos(car.yaw) * car.speed - Math.sin(car.yaw) * car.lateralSpeed) * dt;
+    const blockedX = collides(oldX + moveX, oldZ);
+    const blockedZ = collides(oldX, oldZ + moveZ);
+    car.x = blockedX ? oldX : oldX + moveX;
+    car.z = blockedZ ? oldZ : oldZ + moveZ;
+    if ((blockedX || blockedZ) && Math.abs(car.speed) > 3 && collisionCooldown <= 0) {
+      car.speed *= -0.12; wanted = Math.min(5, wanted + 0.1); collisionCooldown = 0.65;
+      showToast('CURB HIT  ·  WATCH THE ROAD', 1.25);
+    } else if (blockedX || blockedZ) car.speed *= 0.68;
     car.wheelSpin += car.speed * dt / 0.47;
     playerCar.position.set(car.x, 0, car.z);
     playerCar.rotation.y = car.yaw;
@@ -509,7 +541,7 @@ export function startGame() {
   function begin() {
     started = true; paused = false;
     setVisible(intro, false); setVisible(pausePanel, false);
-    initAudio().catch(() => {});
+    initAudio().then(() => { lastAudioSpeed = -1; }).catch(() => {});
     if (statusNode) statusNode.textContent = 'WASD / ARROWS · DRIVE   SPACE · HANDBRAKE   E · DELIVER   ESC · PAUSE';
   }
   function togglePause() {

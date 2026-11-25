@@ -1,4 +1,4 @@
-import { initAudio, setEngine, setSiren, playDelivery, cleanupAudio } from './audio.js';
+import { initAudio, setEngine, setSiren, playDelivery, cleanupAudio } from './audio.js?v=3';
 
 // Perspective Canvas fallback for browsers where WebGL is unavailable.
 export function startFallback() {
@@ -10,14 +10,14 @@ export function startFallback() {
   const N = 7, SP = 150, ROAD = 30, HALF = N * SP / 2, SIZE = N * SP + 100;
   const roads = Array.from({ length: N + 1 }, (_, i) => -HALF + i * SP);
   const keys = new Set(), buildings = [], traffic = [], cops = [], missionPoints = [
-    [-225, 225, 'THE LAST-MINUTE PARCEL', 450], [225, 75, 'A QUIET PICKUP', 650],
+    [75, 375, 'THE LAST-MINUTE PARCEL', 450], [225, 75, 'A QUIET PICKUP', 650],
     [375, -375, 'BAYFRONT RUN', 900], [-375, -225, 'NIGHT MARKET DROP', 1250], [75, 375, 'ONE MORE FAVOR', 1600],
   ];
   let W = 0, H = 0, DPR = 1, cash = 250, heat = 0, missionIndex = 0, paused = true, started = false;
   let timer = 0, crashCooldown = 0, clearHeat = 0, audioSpeed = -1, sirenOn = false;
   let seed = 82917;
   const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-  const car = { x: 75, z: HALF - 31, yaw: 0, speed: 0, steer: 0 };
+  const car = { x: 75, z: HALF - 31, yaw: 0, speed: 0, lateralSpeed: 0, steer: 0 };
   const colors = ['#566d77','#a66e60','#7d8285','#6c7d93','#b49a79','#537267','#826c79','#8e765f'];
   const bound = (v, a, b) => Math.max(a, Math.min(b, v));
   const angle = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
@@ -143,7 +143,20 @@ export function startFallback() {
     for(const p of roads){
       face([[p-ROAD/2,.015,-edge],[p+ROAD/2,.015,-edge],[p+ROAD/2,.015,edge],[p-ROAD/2,.015,edge]],cam,'#242c33');
       face([[-edge,.016,p-ROAD/2],[edge,.016,p-ROAD/2],[edge,.016,p+ROAD/2],[-edge,.016,p+ROAD/2]],cam,'#242c33');
-      for(let t=-HALF+12;t<HALF;t+=30){face([[p-.2,.07,t],[p+.2,.07,t],[p+.2,.07,t+8],[p-.2,.07,t+8]],cam,'#d3c69f');face([[t,.07,p-.2],[t+8,.07,p-.2],[t+8,.07,p+.2],[t,.07,p+.2]],cam,'#d3c69f');}
+      for(let t=-HALF+12;t<HALF;t+=30){
+        face([[p-.08,.075,t],[p+.08,.075,t],[p+.08,.075,t+7],[p-.08,.075,t+7]],cam,'#d5c89e');
+        face([[t,.075,p-.08],[t+7,.075,p-.08],[t+7,.075,p+.08],[t,.075,p+.08]],cam,'#d5c89e');
+        face([[p-1.4,.078,t],[p-1.4,.078,t+7],[p-1.24,.078,t+7],[p-1.24,.078,t]],cam,'#d5c89e');
+        face([[t,.078,p-1.4],[t+7,.078,p-1.4],[t+7,.078,p-1.24],[t,.078,p-1.24]],cam,'#d5c89e');
+      }
+      for(const cross of roads){
+        if(Math.abs(cross-p)<ROAD)continue;
+        for(let k=0;k<5;k++){
+          const offset=-10+k*4.5;
+          face([[p-12,.08,cross+offset],[p+12,.08,cross+offset],[p+12,.08,cross+offset+1.5],[p-12,.08,cross+offset+1.5]],cam,'#c9c6b7');
+          face([[cross+offset,.08,p-12],[cross+offset+1.5,.08,p-12],[cross+offset+1.5,.08,p+12],[cross+offset,.08,p+12]],cam,'#c9c6b7');
+        }
+      }
       for(const s of [-1,1]){
         const a=p+s*(ROAD/2+2.5);face([[a-2.5,.09,-edge],[a+2.5,.09,-edge],[a+2.5,.09,edge],[a-2.5,.09,edge]],cam,'#777d7b');
         face([[-edge,.09,p+s*(ROAD/2+2.5)-2.5],[edge,.09,p+s*(ROAD/2+2.5)-2.5],[edge,.09,p+s*(ROAD/2+2.5)+2.5],[-edge,.09,p+s*(ROAD/2+2.5)+2.5]],cam,'#777d7b');
@@ -165,7 +178,7 @@ export function startFallback() {
   }
   function collision(x,z){if(Math.abs(x)>HALF+22||Math.abs(z)>HALF+22)return true;const onRoad=roads.some(p=>Math.abs(x-p)<ROAD/2+3||Math.abs(z-p)<ROAD/2+3);if(onRoad)return false;return buildings.some(b=>b.kind==='building'&&Math.abs(x-b.x)<b.w/2+2.7&&Math.abs(z-b.z)<b.d/2+2.7);}
   function update(dt){
-    if(!paused){const throttle=(keys.has('w')||keys.has('arrowup')?1:0)-(keys.has('s')||keys.has('arrowdown')?1:0),steer=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0),brake=keys.has(' ');const max=throttle<0?19:42;if(throttle)car.speed+=throttle*(throttle>0?17:24)*dt;car.speed*=Math.max(0,1-(brake?2.1:.44)*dt);if(!throttle)car.speed*=Math.max(0,1-.35*dt);car.speed=bound(car.speed,-max*.48,max);car.steer+=(steer-car.steer)*Math.min(1,dt*4.8);car.yaw=angle(car.yaw-car.steer*bound(Math.abs(car.speed)/8,.08,1)*dt*1.75*Math.sign(car.speed||1)*(brake?1.5:1));const ox=car.x,oz=car.z;car.x-=Math.sin(car.yaw)*car.speed*dt;car.z-=Math.cos(car.yaw)*car.speed*dt;if(collision(car.x,car.z)){car.x=ox;car.z=oz;car.speed*=-.16;if(crashCooldown<=0){heat=Math.min(5,heat+.12);crashCooldown=.8;notify('CURB HIT · WATCH THE ROAD')}}if(crashCooldown>0)crashCooldown-=dt;
+    if(!paused){const throttle=(keys.has('w')||keys.has('arrowup')?1:0)-(keys.has('s')||keys.has('arrowdown')?1:0),steer=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0),brake=keys.has(' ');const max=throttle<0?19:42;if(throttle)car.speed+=throttle*(throttle>0?17:24)*dt;car.speed*=Math.max(0,1-(brake?2.1:.44)*dt);if(!throttle)car.speed*=Math.max(0,1-.35*dt);car.speed=bound(car.speed,-max*.48,max);car.steer+=(steer-car.steer)*Math.min(1,dt*4.8);car.yaw=angle(car.yaw-car.steer*bound(Math.abs(car.speed)/8,0,1)*dt*1.75*Math.sign(car.speed||1)*(brake?1.5:1));car.lateralSpeed+=car.steer*Math.abs(car.speed)/40*(brake?3.2:.75)*dt;car.lateralSpeed*=Math.exp(-(brake?.85:5.4)*dt);const ox=car.x,oz=car.z,mx=(-Math.sin(car.yaw)*car.speed+Math.cos(car.yaw)*car.lateralSpeed)*dt,mz=(-Math.cos(car.yaw)*car.speed-Math.sin(car.yaw)*car.lateralSpeed)*dt,bx=collision(ox+mx,oz),bz=collision(ox,oz+mz);car.x=bx?ox:ox+mx;car.z=bz?oz:oz+mz;if(bx||bz){car.speed*=Math.abs(car.speed)>3?-.12:.68;if(crashCooldown<=0){heat=Math.min(5,heat+.1);crashCooldown=.65;notify('CURB HIT · WATCH THE ROAD')}}if(crashCooldown>0)crashCooldown-=dt;
       for(const t of traffic){const tx=t.ns?t.line+t.dir*5:t.phase,tz=t.ns?t.phase:t.line-t.dir*5;if(Math.hypot(tx-car.x,tz-car.z)<4.4&&Math.abs(car.speed)>9&&crashCooldown<=0){car.speed*= -.18;heat=Math.min(5,heat+.18);crashCooldown=.9;notify('TRAFFIC COLLISION · PATROL ALERT')}}
       for(const cop of cops){const dx=car.x-cop.x,dz=car.z-cop.z;const target=Math.atan2(-dx,-dz);cop.yaw=angle(cop.yaw+bound(angle(target-cop.yaw),-2.1*dt,2.1*dt));cop.x-=Math.sin(cop.yaw)*cop.speed*dt;cop.z-=Math.cos(cop.yaw)*cop.speed*dt;if(Math.hypot(dx,dz)<5&&crashCooldown<=0){cash=Math.max(0,cash-100);heat=Math.max(0,heat-1);crashCooldown=2;notify('POLICE STOP · $100 FINE')}}
       if(heat>0){if(cops.every(c=>Math.hypot(c.x-car.x,c.z-car.z)>165))clearHeat+=dt;else clearHeat=0;if(clearHeat>18){heat=Math.max(0,heat-.35);clearHeat=0}}
@@ -178,12 +191,12 @@ export function startFallback() {
   function deliver(){const m=mission();if(Math.hypot(m[0]-car.x,m[1]-car.z)>12){notify('MOVE CLOSER TO THE DROP');return}cash+=m[3];heat=Math.min(5,heat+.75);playDelivery();missionIndex=(missionIndex+1)%missionPoints.length;notify(`DELIVERY COMPLETE · +$${m[3]}`);$('flash').classList.add('on');setTimeout(()=>$('flash').classList.remove('on'),240);while(cops.length<Math.min(3,Math.ceil(heat/1.8)))spawnCop();}
   function spawnCop(){const p={x:car.x+(rand()-.5)*170,z:car.z+(rand()-.5)*170,yaw:0,speed:20};cops.push(p);}
   function setVisible(n,v){if(!n)return;n.hidden=!v;n.classList.toggle('hidden',!v);}
-  function begin(){started=true;paused=false;setVisible(intro,false);setVisible(pausePanel,false);initAudio().catch(()=>{});status.textContent='WASD / ARROWS · DRIVE   SPACE · HANDBRAKE   E · DELIVER   ESC · PAUSE';}
+  function begin(){started=true;paused=false;setVisible(intro,false);setVisible(pausePanel,false);initAudio().then(()=>{audioSpeed=-1}).catch(()=>{});status.textContent='WASD / ARROWS · DRIVE   SPACE · HANDBRAKE   E · DELIVER   ESC · PAUSE';}
   function pause(){if(!started)return;paused=!paused;setVisible(pausePanel,paused);}
   function onKeyDown(e){const k=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();keys.add(k);if(k==='e'&&!e.repeat&&started&&!paused)deliver();if(k==='escape'&&!e.repeat&&started)pause();}
   function onKeyUp(e){keys.delete(e.key.toLowerCase());}function onBlur(){keys.clear();}
   startButton.addEventListener('click',begin);resumeButton.addEventListener('click',()=>{if(started&&paused)pause()});addEventListener('keydown',onKeyDown,{passive:false});addEventListener('keyup',onKeyUp);addEventListener('blur',onBlur);
-  let last=performance.now();function loop(now){const dt=Math.min(.035,(now-last)/1000);last=now;update(dt);requestAnimationFrame(loop);}requestAnimationFrame(loop);
+  let last=performance.now(),frame=0;function loop(now){const dt=Math.min(.035,(now-last)/1000);last=now;update(dt);frame=requestAnimationFrame(loop);}frame=requestAnimationFrame(loop);
   notify('');setVisible(intro,true);setVisible(pausePanel,false);
-  return {dispose(){cancelAnimationFrame(loop);removeEventListener('keydown',onKeyDown);removeEventListener('keyup',onKeyUp);removeEventListener('blur',onBlur);cleanupAudio();}};
+  return {dispose(){cancelAnimationFrame(frame);removeEventListener('keydown',onKeyDown);removeEventListener('keyup',onKeyUp);removeEventListener('blur',onBlur);cleanupAudio();}};
 }

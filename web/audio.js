@@ -65,9 +65,9 @@ function startEngine(ctx) {
     harmonic.frequency.value = 96;
 
     const bodyGain = ctx.createGain();
-    bodyGain.gain.value = 0.032;
+    bodyGain.gain.value = 0.0001;
     const harmonicGain = ctx.createGain();
-    harmonicGain.gain.value = 0.012;
+    harmonicGain.gain.value = 0.0001;
     body.connect(bodyGain).connect(filter);
     harmonic.connect(harmonicGain).connect(filter);
 

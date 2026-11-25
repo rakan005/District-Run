@@ -31,13 +31,13 @@ startButton?.addEventListener('pointerdown', () => { startWasPressed = true; }, 
 startButton?.addEventListener('click', () => { startWasPressed = true; }, { once: true });
 async function bootGame() {
   try {
-    const { startGame } = await import('./game3d.js?v=2');
+    const { startGame } = await import('./game3d.js?v=3');
     startGame();
     if (startWasPressed) startButton?.click();
   } catch (error) {
     console.warn('3D renderer unavailable; starting compatible city renderer.', error);
     try {
-      const { startFallback } = await import('./fallback.js?v=2');
+      const { startFallback } = await import('./fallback.js?v=3');
       startFallback();
       if (startWasPressed) startButton?.click();
     } catch (fallbackError) {
