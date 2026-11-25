@@ -20,12 +20,12 @@
  <div class="mapbox"><canvas id="map" width="344" height="344"></canvas><div class="map-label">DISTRICT MAP</div></div>
  <div class="speed-wrap"><div class="speed-row"><div id="speed" class="speed">000</div><div class="speed-unit">KM/H</div></div><div class="speed-caption">NIGHT DRIVE</div></div>
  <div class="controls"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> DRIVE &nbsp; <span class="key">SPACE</span> HANDBRAKE &nbsp; <span class="key">E</span> DELIVER &nbsp; <span class="key">ESC</span> PAUSE</div>
- <div id="toast" class="toast"></div><div id="flash" class="flash"></div><div id="status" class="status">LOADING CITY</div>
+ <div id="toast" class="toast"></div><div id="flash" class="flash"></div><div id="status" class="status">PRESS START TO BEGIN</div>
 </div>
 <div id="intro" class="overlay"><div class="card"><div class="kicker">AN ORIGINAL THIRD-PERSON CITY DRIVE</div><div class="title">NIGHTSHIFT<br><em>DISTRICT RUN</em></div><div class="desc">A city of late-night contracts, wet asphalt, warm windows, and patrol lights. Take the wheel, follow the marker, and make your drop before the streets get crowded.</div><button id="start" class="start">START YOUR SHIFT&nbsp; →</button><div class="help"><span><b class="key-pill">WASD</b> DRIVE</span><span><b class="key-pill">SPACE</b> HANDBRAKE</span><span><b class="key-pill">E</b> DELIVER</span><span><b class="key-pill">ESC</b> PAUSE</span></div></div></div>
 <div id="pause" class="overlay hidden"><div class="card"><div class="kicker">TAKE A BREATHER</div><div class="title">SHIFT<br><em>PAUSED</em></div><div class="desc">Your car and the city are waiting. Get back on the road when you're ready.</div><button class="start" id="resume">RETURN TO THE CITY&nbsp; →</button><div class="help"><span><b class="key-pill">ESC</b> RESUME</span></div></div></div>
 <script type="module">
-import('./game3d.js').then(({ startGame }) => startGame()).catch(async error => { console.warn('3D renderer unavailable; starting compatible city renderer.', error); try { const { startFallback } = await import('./fallback.js'); startFallback(); } catch (fallbackError) { console.error(fallbackError); const status=document.getElementById('status'); if(status) status.textContent='GAME COULD NOT START · REFRESH AND CHECK CONNECTION'; } });
+import('./game3d.js?v=2').then(({ startGame }) => startGame()).catch(async error => { console.warn('3D renderer unavailable; starting compatible city renderer.', error); try { const { startFallback } = await import('./fallback.js?v=2'); startFallback(); } catch (fallbackError) { console.error(fallbackError); const status=document.getElementById('status'); if(status) status.textContent='GAME COULD NOT START · REFRESH AND CHECK CONNECTION'; } });
 </script>
 </body>
 </html>
